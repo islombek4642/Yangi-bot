@@ -10,22 +10,38 @@ logger = logging.getLogger(__name__)
 
 class Database:
     def __init__(self):
-        db_host = os.getenv('DB_HOST', 'localhost')
-        db_user = os.getenv('DB_USER', 'root')
-        db_password = os.getenv('DB_PASSWORD', '')
-        db_name = os.getenv('DB_NAME', 'vortex_bot')
+        # Check if running on Railway by looking for a Railway-specific env var
+        is_railway = 'RAILWAY_ENVIRONMENT' in os.environ
+
+        if is_railway:
+            logger.info("Railway environment detected. Using Railway database variables.")
+            # These variables are automatically injected by Railway from the linked MySQL service
+            db_host = os.getenv('MYSQLHOST')
+            db_user = os.getenv('MYSQLUSER')
+            db_password = os.getenv('MYSQLPASSWORD')
+            db_name = os.getenv('MYSQLDATABASE')
+            db_port = os.getenv('MYSQLPORT')
+        else:
+            logger.info("Local environment detected. Using .env file variables.")
+            db_host = os.getenv('DB_HOST', 'localhost')
+            db_user = os.getenv('DB_USER', 'root')
+            db_password = os.getenv('DB_PASSWORD', '')
+            db_name = os.getenv('DB_NAME', 'vortex_bot')
+            db_port = os.getenv('DB_PORT', 3306)
 
         try:
-            # 1. Connect to MySQL server to create the database if it doesn't exist
-            conn = mysql.connector.connect(host=db_host, user=db_user, password=db_password)
-            cursor = conn.cursor()
-            logger.info(f"Checking if database '{db_name}' exists...")
-            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-            cursor.close()
-            conn.close()
-            logger.info(f"Database '{db_name}' is ready.")
+            # For local development, we ensure the database exists.
+            # On Railway, the database is already provisioned.
+            if not is_railway:
+                conn = mysql.connector.connect(host=db_host, user=db_user, password=db_password, port=int(db_port))
+                cursor = conn.cursor()
+                logger.info(f"Ensuring local database '{db_name}' exists...")
+                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+                cursor.close()
+                conn.close()
+                logger.info(f"Local database '{db_name}' is ready.")
 
-            # 2. Now, create the connection pool to the specific database
+            # Create the connection pool
             self.pool = mysql.connector.pooling.MySQLConnectionPool(
                 pool_name="bot_pool",
                 pool_size=5,
@@ -33,20 +49,16 @@ class Database:
                 database=db_name,
                 user=db_user,
                 password=db_password,
+                port=int(db_port),
                 charset='utf8mb4'
             )
             logger.info("Database connection pool created successfully.")
             
-            # 3. Create tables within the database
+            # Create tables if they don't exist
             self._create_tables()
 
         except Error as e:
             logger.error(f"Database setup error: {e}")
-            if e.errno == 2003:
-                logger.critical(
-                    "CRITICAL: Cannot connect to MySQL server. "
-                    "Please ensure the MySQL server is running and the credentials in the .env file are correct."
-                )
             raise
 
     def _create_tables(self):
