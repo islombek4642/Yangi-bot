@@ -1,0 +1,110 @@
+1. ROL/PERSONA:
+
+Sen Telegram botlarini yaratishga ixtisoslashgan, Python dasturlash tilida 10+ yillik tajribaga ega bo'lgan elita darajadagi dasturchisan. Sening super kuching — nafaqat murakkab funksionallikni yoza olish, balki foydalanuvchi uchun har bir qadamni intuitiv, qulay va yoqimli qiladigan (UX-focused) yechimlar yarata olishdir. Sen toza kod, optimallashtirish va mustahkam arxitektura tamoyillariga qat'iy rioya qilasan.
+
+2. ASOSIY MAQSAD:
+
+Sening vazifang — video yuklash, musiqa aniqlash va transkripsiya qilish kabi bir nechta xizmatlarni o'zida jamlagan, lekin yagona, uzluksiz va professional mahsulotdek ishlaydigan Telegram botini noldan yaratish. Botning har bir javobi, har bir tugmasi va har bir xabari foydalanuvchiga g'amxo'rlikni his qildirishi kerak. Bot Railway kabi resursi cheklangan platformada barqaror ishlashi lozim.
+
+3. ASOSIY FUNKSIONAL BLOKLAR:
+
+A. Foydalanuvchini Bortga Olish (Onboarding) va Boshqarish:
+Birinchi Kontakt: Foydalanuvchi /start buyrug'ini birinchi marta yuborganda, bot iliq salomlashib, o'zining asosiy imkoniyatlarini (video yuklash, musiqa topish) qisqa va lo'nda tanishtiradi. Shundan so'ng, "To'liq ishlash uchun, iltimos, kontaktingizni ulashing" degan xabar bilan maxsus KeyboardButton (bir martalik) yuboradi.
+Ma'lumotlarni Saqlash: Foydalanuvchi kontaktini yuborgach, uning user_id, first_name, username, phone_number ma'lumotlari MySQL ma'lumotlar bazasiga yoziladi.
+Qayta Tashrif: Agar ro'yxatdan o'tgan foydalanuvchi /start buyrug'ini qayta yuborsa, bot unga ismi bilan murojaat qilib ("Xush kelibsiz, [Ism]!"), asosiy menyuni taklif qiladi.
+B. Video Yuklash va Aqlli Musiqa Topish Oqimi:
+Havola Qabul Qilish: Foydalanuvchi video havolasini yuborganda, bot darhol "⏳ Videoni tahlil qilmoqdaman..." degan javob qaytaradi.
+Video Yuklash: yt-dlp orqali video yuklanadi. Jarayonda status o'zgarib turadi: "✅ Video yuklanmoqda...".
+Musiqani Aniqlash: Video yuklangach, bot "🎵 Musiqani qidirmoqdaman..." degan xabar beradi va shazamio yordamida audio yo'lakni tahlil qiladi.
+Natijaga Ko'ra Javob:
+Musiqa Topilsa: Yuklangan video yuboriladi. Video tagida aniqlangan qo'shiq nomi ("Rauf & Faik - detstvo") va "✅ Qo'shiqni yuklash" yozuvli InlineKeyboardButton bo'ladi. callback_datada qo'shiq nomi kodlangan bo'ladi.
+Musiqa Topilmasa: Video captionida "ℹ️ Ushbu videoda taniqli musiqa topilmadi" degan aniq va tushunarli izoh bilan yuboriladi.
+C. To'g'ridan-to'g'ri Musiqa/Audio Bilan Ishlash:
+Fayl Qabul Qilish: Foydalanuvchi audio, ovozli xabar yoki video xabar ("krujok") yuborganda, bot "🎵 Musiqani qidirmoqdaman..." deb javob beradi.
+Aniqlash va Qidirish: shazamio orqali musiqa aniqlanadi. So'ng yt-dlp orqali YouTube'dan "qo'shiq nomi audio" so'rovi bilan eng yaxshi natija qidiriladi.
+Yuklash va Yuborish: Topilgan natijaning audiosi MP3 formatida yuklanib, foydalanuvchiga yuboriladi. Fayl sarlavhasi va ijrochisi kabi metama'lumotlar to'ldiriladi.
+D. Transkripsiya Xizmati:
+Fayl Qabul Qilish: Foydalanuvchi ovozli yoki video xabar yuborganda, agar u musiqa sifatida tanilmasa (yoki maxsus buyruq bo'lsa), bot "✍️ Matnga o'girilmoqda..." degan xabar beradi.
+Amalga Oshirish: faster-whisper (base modeli) yordamida transkripsiya qilinadi. Resurslarni tejash uchun 25MB va 3 daqiqalik cheklov qo'yiladi. Cheklovdan oshsa, "Kechirasiz, 3 daqiqadan uzun fayllarni matnga o'gira olmayman" degan xabar beriladi.
+Natija: Tayyor matn alohida xabar sifatida yuboriladi.
+E. Admin Paneli:
+/stats buyrug'i faqat .env faylida ko'rsatilgan ADMIN_ID uchun ishlaydi.
+Statistika: "📊 Bot Statistikasi:\n\n👥 Umumiy foydalanuvchilar: [son]\n🆕 Bugun qo'shilganlar: [son]" formatida chiqariladi.
+4. FOYDALANUVCHI TAJRIBASI (UX) UCHUN MAJBURIY TALABLAR:
+
+Status Xabarlari: Har bir uzoq davom etadigan amal (yuklash, tahlil qilish) uchun bot.send_chat_action (masalan, TYPING, UPLOAD_VIDEO) va "Bajarilmoqda..." kabi vaqtinchalik xabarlardan foydalanilsin. Bu foydalanuvchiga botning "tirik" ekanini bildiradi.
+Xatoliklarni To'g'ri Ishlash: Foydalanuvchiga texnik jargon (traceback, error code) ko'rsatilmasin. Buning o'rniga "❌ Kechirasiz, bu havolani qayta ishlay olmadim. Iltimos, boshqa havolani sinab ko'ring" yoki "🤖 Hozirda serverda kichik muammo yuzaga keldi, birozdan so'ng urinib ko'ring" kabi tushunarli xabarlar berilsin. Barcha xatoliklar log faylga yozilsin.
+Interaktivlik: Inline va oddiy KeyboardButtonlardan maksimal darajada unumli foydalanilsin. Foydalanuvchi matn yozish o'rniga tugmalarni bosib ishini bitirsin.
+Tozalik: Botning javoblari qisqa, lo'nda va ortiqcha bezaklarsiz bo'lsin. Har bir xabar aniq bir maqsadga xizmat qilsin.
+5. TEXNIK VA ARXITEKTURAVIY TALABLAR:
+
+Til va Kutubxonalar: Python 3.10+, 
+requirements.txt
+dagi kutubxonalardan foydalanilsin (python-telegram-bot[ext], shazamio, faster-whisper, yt-dlp, mysql-connector-python, pydub, python-dotenv).
+Arxitektura: To'liq asinxron (asyncio). Kod modullarga bo'lingan (handlers, utils) va har bir modul o'z vazifasiga javob beradigan (Single Responsibility Principle) bo'lishi kerak.
+Ma'lumotlar Bazasi: utils/database.pyda MySQL bilan ishlaydigan sinf (class) yaratilsin. Ulanishni boshqarish uchun connection pool'dan foydalanish tavsiya etiladi.
+Deployment: Railway uchun Procfile (web: python bot.py) va ffmpeg kabi bog'liqliklarni o'rnatish uchun nixpacks konfiguratsiyasi yoki Dockerfile tayyorlansin.
+6. LOYIHA TUZILMASI (PROJECT STRUCTURE)
+
+AI modelidan kutilayotgan loyiha tuzilmasi quyidagicha bo'lishi kerak. Bu toza, boshqarishga oson va kengaytirish uchun qulay arxitekturani ta'minlaydi:
+/VortexFetchBot
+|
+|-- bot.py              # Asosiy fayl: botni ishga tushirish, handlerlarni ulash
+|-- requirements.txt    # Barcha kerakli kutubxonalar ro'yxati
+|-- Procfile            # Railway uchun ishga tushirish skripti (masalan: web: python bot.py)
+|-- .env                # Maxfiy kalitlar (DB, Tokenlar). Gitga qo'shilmasin.
+|-- .env.example        # .env fayli uchun andoza
+|-- .gitignore          # Git tomonidan e'tibor berilmaydigan fayllar va papkalar
+|
+|-- handlers/           # Foydalanuvchi so'rovlarini qayta ishlovchi modullar
+|   |-- __init__.py
+|   |-- commands.py       # /start, /stats kabi to'g'ridan-to'g'ri buyruqlarni ushlaydi
+|   |-- messages.py       # Matn (havola), audio, video, ovozli xabarlarni ushlaydi
+|   |-- callbacks.py      # Inline tugma bosishlarini (callback_query) ushlaydi
+|
+|-- utils/              # Asosiy logikani o'zida saqlovchi yordamchi modullar
+|   |-- __init__.py
+|   |-- database.py       # MySQL ma'lumotlar bazasi bilan ishlash uchun barcha funksiyalar
+|   |-- downloader.py     # Video va audio yuklash (yt-dlp) logikasi
+|   |-- recognizer.py     # Musiqani aniqlash (shazamio) logikasi
+|   |-- transcriber.py    # Ovozni matnga o'girish (faster-whisper) logikasi
+|   |-- helpers.py        # Kichik yordamchi funksiyalar (masalan, fayl o'lchamini tekshirish)
+|
+|-- logs/               # Xatoliklar va muhim jarayonlar loglari saqlanadigan papka
+|   |-- bot.log
+
+7. KUTILAYOTGAN NATIJA (EXPECTED OUTPUT)
+
+AI modelidan yakuniy natija sifatida yuqoridagi barcha talablar va loyiha tuzilmasiga to'liq mos keladigan, ishlab chiqarishga tayyor (production-ready) Python kodini taqdim etishi kutiladi.
+
+Natija quyidagi mezonlarga javob berishi shart:
+
+To'liq Kod To'plami: Yuqorida ko'rsatilgan har bir .py fayl uchun to'liq va yakunlangan kod taqdim etilishi kerak. Hech qanday funksiya yoki mantiqiy qism tashlab ketilmasligi lozim.
+Fayl Formatida Taqdim Etish: Har bir faylning mazmuni alohida, fayl nomi sarlavha sifatida ko'rsatilgan kod bloklarida yozilishi kerak. Masalan:
+# bot.py
+
+import logging
+# ... boshqa importlar
+
+def main():
+    # ... botni ishga tushirish logikasi
+
+if __name__ == '__main__':
+    main()
+
+
+
+# utils/database.py
+
+import mysql.connector
+# ... boshqa importlar
+
+class Database:
+    # ... baza bilan ishlash metodlari
+
+
+
+Ishga Tayyor Holat (Runnable State): Taqdim etilgan kod 
+requirements.txt faylidagi barcha kutubxonalar o'rnatilgandan va .env fayli to'g'ri sozlangandan so'ng, hech qanday o'zgartirishlarsiz, python bot.py komandasi orqali ishga tushishi kerak.
+Mustahkamlik va Xatoliklarga Bardoshlilik: Kodda try...except bloklari to'g'ri qo'llanilgan bo'lishi, kutilmagan xatoliklar (masalan, API ishlamay qolishi, fayl topilmasligi) foydalanuvchiga texnik xatolik ko'rsatmasdan, tushunarli tilda yetkazilishi kerak. Barcha muhim xatoliklar logs/bot.log fayliga yozilishi kerak.
+Optimal va Samarador: Kod resurslardan (ayniqsa, RAM va CPU) oqilona foydalanishi, asinxron operatsiyalardan unumli foydalangan holda bir vaqtning o'zida bir nechta foydalanuvchiga xizmat ko'rsata olishi kerak. Bu, ayniqsa, faster-whisper kabi resurs talab qiladigan kutubxonalar uchun juda muhim.

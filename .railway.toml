@@ -1,0 +1,24 @@
+[project]
+name = "vortexfetchbot"
+
+[build]
+image = "python:3.10-slim"
+
+[build.env]
+PYTHONUNBUFFERED = "1"
+
+[deploy]
+command = "python bot.py"
+
+[deploy.env]
+# These will be set in Railway dashboard
+BOT_TOKEN = ""
+ADMIN_ID = ""
+
+[database]
+name = "mysql"
+
+[database.env]
+MYSQL_ROOT_PASSWORD = ""
+MYSQL_DATABASE = "vortex_bot"
+MYSQL_USER = "root"
