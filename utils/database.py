@@ -5,6 +5,7 @@ from mysql.connector import Error
 from typing import Optional, List, Dict
 import logging
 from datetime import datetime
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +15,20 @@ class Database:
         is_railway = 'RAILWAY_ENVIRONMENT' in os.environ
 
         if is_railway:
-            logger.info("Railway environment detected. Using Railway database variables.")
-            # These variables are automatically injected by Railway from the linked MySQL service
-            db_host = os.getenv('MYSQLHOST')
-            db_user = os.getenv('MYSQLUSER')
-            db_password = os.getenv('MYSQLPASSWORD')
-            db_name = os.getenv('MYSQLDATABASE')
-            db_port = os.getenv('MYSQLPORT')
+            logger.info("Railway environment detected. Using MYSQL_URL.")
+            # Railway provides a single connection string URL which is more reliable
+            db_url_str = os.getenv('MYSQL_URL')
+            if not db_url_str:
+                logger.critical("MYSQL_URL not found in Railway environment! Cannot connect to the database.")
+                raise ValueError("MYSQL_URL environment variable not found.")
+            
+            url = urlparse(db_url_str)
+            db_host = url.hostname
+            db_user = url.username
+            db_password = url.password
+            db_name = url.path[1:]  # Remove leading '/'
+            db_port = url.port
+
         else:
             logger.info("Local environment detected. Using .env file variables.")
             db_host = os.getenv('DB_HOST', 'localhost')
@@ -31,7 +39,7 @@ class Database:
 
         try:
             # For local development, we ensure the database exists.
-            # On Railway, the database is already provisioned.
+            # On Railway, the database is already provisioned and this step is skipped.
             if not is_railway:
                 conn = mysql.connector.connect(host=db_host, user=db_user, password=db_password, port=int(db_port))
                 cursor = conn.cursor()
