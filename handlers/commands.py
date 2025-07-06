@@ -8,19 +8,23 @@ from utils.helpers import helpers
 logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /start command."""
+    """Handle /start command, ensuring user is fully registered."""
     user = update.effective_user
     
-    # Check if user is new
-    if not await db.get_user_stats(user.id):
-        # Add user to database
-        await db.add_user(
-            user.id,
-            user.first_name,
-            user.username,
-            user.phone_number
+    # Check if user exists and has a phone number
+    user_data = await db.get_user(user.id)
+    
+    if user_data and user_data.get('phone_number'):
+        # User is fully registered, send welcome back message
+        await update.message.reply_text(
+            f"Xush kelibsiz, {user.first_name}!\n\nSiz botdan to'liq foydalanishingiz mumkin."
         )
-        
+    else:
+        # New user or existing user without a phone number
+        if not user_data:
+            await db.add_user(user)
+            logger.info(f"New user {user.id} added to the database.")
+
         # Send welcome message with contact request
         keyboard = [
             [KeyboardButton("📱 Kontaktni ulashish", request_contact=True)],
@@ -28,22 +32,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
         await update.message.reply_html(
-            text=f"Assalomu alaykum, {update.effective_user.mention_html()}!\n\nBotdan to'liq foydalanish uchun, iltimos, <b>'Kontaktni ulashish'</b> tugmasini bosing.",
+            text=f"Assalomu alaykum, {user.mention_html()}!\n\nBotdan to'liq foydalanish uchun, iltimos, <b>'Kontaktni ulashish'</b> tugmasini bosing.",
             reply_markup=reply_markup
-        )
-    else:
-        # Send welcome back message
-        await update.message.reply_text(
-            f"Xush kelibsiz, {user.first_name}!\n"
-            "Quyidagi xizmatlardan foydalanishingiz mumkin:\n"
-            "• Video yuklash\n"
-            "• Musiqa aniqlash\n"
-            "• Ovozli xabarlarni matnga o'girish",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Video yuklash", callback_data='video')],
-                [InlineKeyboardButton("Musiqa aniqlash", callback_data='music')],
-                [InlineKeyboardButton("Ovozni matnga o'girish", callback_data='transcribe')]
-            ])
         )
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -66,23 +56,18 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle contact sharing."""
+    """Handle contact sharing and complete registration."""
     user = update.effective_user
     contact = update.message.contact
     
-    # Update user's phone number
-    await db.add_user(
-        user.id,
-        user.first_name,
-        user.username,
-        contact.phone_number
-    )
-    
-    await update.message.reply_text(
-        "Kontakt saqlandi! Quyidagi xizmatlardan foydalanishingiz mumkin:",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("Video yuklash", callback_data='video')],
-            [InlineKeyboardButton("Musiqa aniqlash", callback_data='music')],
-            [InlineKeyboardButton("Ovozni matnga o'girish", callback_data='transcribe')]
-        ])
-    )
+    if contact:
+        await db.update_phone_number(user.id, contact.phone_number)
+        logger.info(f"User {user.id} shared their contact: {contact.phone_number}")
+        
+        # Remove the custom keyboard and send confirmation
+        await update.message.reply_text(
+            "Rahmat! Ro'yxatdan o'tish muvaffaqiyatli yakunlandi.\n\nEndi botning barcha imkoniyatlaridan foydalanishingiz mumkin.",
+            reply_markup=None # Removes the keyboard
+        )
+    else:
+        logger.warning(f"Contact handler called without a contact object from user {user.id}")

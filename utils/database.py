@@ -194,8 +194,8 @@ class Database:
             cursor.close()
             conn.close()
 
-    async def log_action(self, user_id: int, action_type: str) -> bool:
-        """Log user action."""
+    async def log_action(self, user_id: int, action_type: str) -> None:
+        """Log a user action to the stats table."""
         conn = self.pool.get_connection()
         cursor = conn.cursor()
 
@@ -237,6 +237,35 @@ class Database:
                 'total_actions': 0,
                 'new_today': 0
             }
+        finally:
+            cursor.close()
+            conn.close()
+
+    async def get_user(self, user_id: int) -> Optional[Dict]:
+        """Get a user's full record from the database."""
+        conn = self.pool.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+            return cursor.fetchone()
+        except Error as e:
+            logger.error(f"Error fetching user {user_id}: {e}")
+            return None
+        finally:
+            cursor.close()
+            conn.close()
+
+    async def update_phone_number(self, user_id: int, phone_number: str) -> None:
+        """Update a user's phone number in the database."""
+        conn = self.pool.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("UPDATE users SET phone_number = %s WHERE user_id = %s", (phone_number, user_id))
+            conn.commit()
+            logger.info(f"Updated phone number for user {user_id}.")
+        except Error as e:
+            logger.error(f"Error updating phone number for {user_id}: {e}")
+            conn.rollback()
         finally:
             cursor.close()
             conn.close()
