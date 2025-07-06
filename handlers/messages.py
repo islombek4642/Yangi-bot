@@ -12,7 +12,7 @@ from utils.helpers import helpers
 logger = logging.getLogger(__name__)
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle text messages."""
+    """Handle a text message, which could be a command or a URL."""
     await db.add_user(update.effective_user)
     message = update.message
     text = message.text
