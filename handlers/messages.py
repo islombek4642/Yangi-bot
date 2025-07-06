@@ -73,33 +73,39 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def process_url(message: Message, url: str) -> None:
     """Process URL message."""
+    status_message = await message.reply_text("⏳ Havolani tekshirmoqdaman...")
+    video_info = None  # Initialize video_info to None
     try:
         # Download video
-        await message.reply_text("⏳ Videoni tahlil qilmoqdaman...")
+        await status_message.edit_text("⏳ Videoni yuklab olmoqdaman...")
         video_info = await downloader.download_video(url)
-        
+
         if not video_info:
-            await message.reply_text("❌ Kechirasiz, bu havolani qayta ishlay olmadim.")
+            await status_message.edit_text(
+                "❌ Havoladan video yuklab bo'lmadi.\n\n"
+                "Instagram kabi ba'zi saytlar havoladan to'g'ridan-to'g'ri yuklashni cheklashi mumkin. "
+                "Iltimos, videoni fayl sifatida yuboring."
+            )
             return
-        
-        # Download audio
-        await message.reply_text("🎵 Musiqani qidirmoqdaman...")
-        music_info = await music_recognizer.recognize_music(
-            Path(video_info['filename'])
-        )
-        
+
+        # Recognize music
+        await status_message.edit_text("🎵 Musiqani qidirmoqdaman...")
+        music_info = await music_recognizer.recognize_music(Path(video_info['filename']))
+
+        # Delete status message
+        await status_message.delete()
+
         # Send video
         await message.reply_video(
             InputFile(video_info['filename']),
-            caption=f"{video_info['title']}"
+            caption=f"✅ Video muvaffaqiyatli yuklandi: {video_info['title']}"
         )
-        
-        # If music found, add download button
+
+        # If music found, send info with download button
         if music_info:
             keyboard = [
                 [InlineKeyboardButton(
                     "✅ Qo'shiqni yuklash",
-                    callback_data=f"download_music:{music_info['url']}",
                     url=music_info['url']
                 )]
             ]
@@ -108,11 +114,22 @@ async def process_url(message: Message, url: str) -> None:
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         else:
-            await message.reply_text("ℹ️ Ushbu videoda taniqli musiqa topilmadi")
-        
+            # If no music, try to transcribe
+            await message.reply_text("📝 Videodagi nutq matnga o'girilmoqda...")
+            transcript = await transcriber.transcribe_audio(Path(video_info['filename']))
+            if transcript:
+                await message.reply_text(f"📝 Transkripsiya natijasi:\n\n{transcript}")
+            else:
+                await message.reply_text("ℹ️ Ushbu videoda taniqli musiqa yoki nutq topilmadi.")
+
     except Exception as e:
         logger.error(f"Error processing URL: {str(e)}")
-        await message.reply_text("❌ Xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring.")
+        if status_message:
+            await status_message.edit_text("❌ Xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring.")
+    finally:
+        # Clean up downloaded file if it exists
+        if video_info and 'filename' in video_info and os.path.exists(video_info['filename']):
+            helpers.cleanup_file(Path(video_info['filename']))
 
 async def process_audio(message: Message, file_path: str) -> None:
     """Process audio/voice message."""
