@@ -25,13 +25,18 @@ class Transcriber:
                 return None
 
             # Check duration
-            duration = self._get_audio_duration(audio_path)
+            duration = await self._get_audio_duration(audio_path)
             if duration > self.max_duration:
                 logger.warning(f"Audio too long: {audio_path}")
                 return None
 
-            # Transcribe using faster-whisper
-            segments, _ = await self.model.transcribe(audio_path, language="auto")
+            # Run synchronous transcription in a separate thread to avoid blocking the event loop
+            def sync_transcribe():
+                segments, info = self.model.transcribe(str(audio_path), beam_size=5)
+                logger.info(f"Detected language '{info.language}' with probability {info.language_probability}")
+                return segments
+
+            segments = await asyncio.to_thread(sync_transcribe)
             
             # Join all segments
             transcript = " ".join([segment.text for segment in segments])
@@ -43,27 +48,33 @@ class Transcriber:
             logger.error(f"Error transcribing audio: {str(e)}")
             return None
 
-    def _get_audio_duration(self, audio_path: Path) -> float:
+    async def _get_audio_duration(self, audio_path: Path) -> float:
         """Get audio duration in seconds using ffprobe."""
         try:
-            import subprocess
-            
-            result = subprocess.run([
+            command = [
                 'ffprobe',
-                '-v', 'quiet',
-                '-show_streams',
-                '-select_streams', 'a',
+                '-v', 'error',
+                '-show_entries', 'format=duration',
                 '-of', 'default=noprint_wrappers=1:nokey=1',
-                '-show_entries', 'stream=duration',
                 str(audio_path)
-            ], capture_output=True, text=True)
-            
-            duration = float(result.stdout.strip())
+            ]
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                logger.error(f"ffprobe failed for {audio_path}. Stderr: {stderr.decode()}")
+                return 0.0
+
+            duration = float(stdout.decode().strip())
             return duration
             
         except Exception as e:
-            logger.error(f"Error getting audio duration: {str(e)}")
-            return 0
+            logger.error(f"Error getting audio duration: {e}")
+            return 0.0
 
     async def cleanup(self) -> None:
         """Cleanup temporary files."""

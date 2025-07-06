@@ -71,13 +71,13 @@ class Database:
             raise
 
     def _create_tables(self):
-        """Create necessary tables if they don't exist."""
+        """Create necessary tables and add missing columns atomically."""
         conn = self.pool.get_connection()
         cursor = conn.cursor()
-
         try:
-            # Users table
-            cursor.execute('''
+            logger.info("Verifying database schema...")
+            # Create tables if they don't exist
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     user_id BIGINT PRIMARY KEY,
                     first_name VARCHAR(255),
@@ -88,10 +88,8 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            ''')
-
-            # Statistics table
-            cursor.execute('''
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS stats (
                     id BIGINT AUTO_INCREMENT PRIMARY KEY,
                     user_id BIGINT,
@@ -99,20 +97,36 @@ class Database:
                     action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(user_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            ''')
+            """)
 
-            # Safely add new columns if they don't exist
-            cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(255) AFTER first_name")
-            cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS language_code VARCHAR(10) AFTER username")
+            # Add missing columns for backward compatibility
+            self._add_column_if_not_exists(cursor, 'users', 'last_name', 'VARCHAR(255) AFTER first_name')
+            self._add_column_if_not_exists(cursor, 'users', 'language_code', 'VARCHAR(10) AFTER username')
 
             conn.commit()
-            logger.info("Database tables verified and updated successfully.")
+            logger.info("Database schema verified and updated successfully.")
         except Error as e:
-            logger.error(f"Error creating/updating tables: {str(e)}")
+            logger.error(f"Error during schema creation/update: {e}")
             conn.rollback()
         finally:
             cursor.close()
             conn.close()
+
+    def _add_column_if_not_exists(self, cursor, table_name, column_name, column_definition):
+        """Helper function to add a column if it doesn't exist, using the provided cursor."""
+        cursor.execute(f"""
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = '{table_name}'
+              AND COLUMN_NAME = '{column_name}'
+        """)
+        if cursor.fetchone()[0] == 0:
+            logger.info(f"Column '{column_name}' not found in table '{table_name}'. Adding it...")
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
+            logger.info(f"Successfully added column '{column_name}'.")
+        else:
+            logger.debug(f"Column '{column_name}' already exists in table '{table_name}'.")
 
     async def add_user(self, user: User) -> None:
         """Add or update a user in the database."""
