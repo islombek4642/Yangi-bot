@@ -18,13 +18,13 @@ class Downloader:
             ydl_opts = {
                 'format': 'bestvideo*+bestaudio/best',
                 'outtmpl': str(self.temp_dir / '%(title)s.%(ext)s'),
-                'progress_hooks': [self._progress_hook],
                 'verbose': True,  # Enable verbose logging for debugging
                 'noplaylist': True,
                 'concurrent_fragment_downloads': 4,
                 'max_filesize': 50 * 1024 * 1024,  # 50MB limit
                 'max_duration': 600,  # 10 minutes limit
                 'merge_output_format': 'mp4', # Ensure merging into mp4
+                'ffmpeg_location': '/usr/bin/ffmpeg' # Explicitly set path for ffmpeg
             }
 
             loop = asyncio.get_event_loop()
