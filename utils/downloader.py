@@ -19,8 +19,7 @@ class Downloader:
                 'format': 'bestvideo*+bestaudio/best',
                 'outtmpl': str(self.temp_dir / '%(title)s.%(ext)s'),
                 'progress_hooks': [self._progress_hook],
-                'quiet': True,
-                'no_warnings': True,
+                'verbose': True,  # Enable verbose logging for debugging
                 'noplaylist': True,
                 'concurrent_fragment_downloads': 4,
                 'max_filesize': 50 * 1024 * 1024,  # 50MB limit
@@ -50,21 +49,7 @@ class Downloader:
     async def download_audio(self, url: str, title: str) -> Optional[Dict]:
         """Download audio from URL using yt-dlp."""
         try:
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'outtmpl': str(self.temp_dir / f'{title}.%(ext)s'),
-                'progress_hooks': [self._progress_hook],
-                'quiet': True,
-                'no_warnings': True,
-                'noplaylist': True,
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }],
-                'max_filesize': 20 * 1024 * 1024,  # 20MB limit
-                'max_duration': 300,  # 5 minutes limit
-            }
+            ydl_opts = self._get_ydl_opts(self.temp_dir / f'{title}.%(ext)s', is_audio=True)
 
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
