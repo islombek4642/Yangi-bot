@@ -1,6 +1,6 @@
 import logging
 import os
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 from utils.database import db
 from utils.helpers import helpers
@@ -11,13 +11,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command, ensuring user is fully registered."""
     user = update.effective_user
     
-    # Check if user exists and has a phone number
+    # Check if user exists and has a non-empty phone number
     user_data = await db.get_user(user.id)
     
-    if user_data and user_data.get('phone_number'):
+    if user_data and user_data.get('phone_number') and str(user_data['phone_number']).strip():
         # User is fully registered, send welcome back message
         await update.message.reply_text(
-            f"Xush kelibsiz, {user.first_name}!\n\nSiz botdan to'liq foydalanishingiz mumkin."
+            f"Xush kelibsiz, {user.first_name}!\n\nVideo, audio yoki havolalarni yuborishingiz mumkin."
         )
     else:
         # New user or existing user without a phone number
@@ -32,7 +32,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
         await update.message.reply_html(
-            text=f"Assalomu alaykum, {user.mention_html()}!\n\nBotdan to'liq foydalanish uchun, iltimos, <b>'Kontaktni ulashish'</b> tugmasini bosing.",
+            text=f"Assalomu alaykum, {user.mention_html()}! 👋\n\nBotdan to'liq foydalanish uchun, iltimos, <b>'Kontaktni ulashish'</b> tugmasini bosib, telefon raqamingizni yuboring.",
             reply_markup=reply_markup
         )
 
@@ -67,7 +67,7 @@ async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         # Remove the custom keyboard and send confirmation
         await update.message.reply_text(
             "Rahmat! Ro'yxatdan o'tish muvaffaqiyatli yakunlandi.\n\nEndi botning barcha imkoniyatlaridan foydalanishingiz mumkin.",
-            reply_markup=None # Removes the keyboard
+            reply_markup=ReplyKeyboardRemove()
         )
     else:
         logger.warning(f"Contact handler called without a contact object from user {user.id}")
