@@ -1,6 +1,7 @@
 import logging
 import asyncio
 from typing import Optional, Dict
+import tempfile
 from shazamio import Shazam
 from pathlib import Path
 
