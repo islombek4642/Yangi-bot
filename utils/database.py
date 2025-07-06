@@ -101,9 +101,14 @@ class Database:
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ''')
 
+            # Safely add new columns if they don't exist
+            cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(255) AFTER first_name")
+            cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS language_code VARCHAR(10) AFTER username")
+
             conn.commit()
+            logger.info("Database tables verified and updated successfully.")
         except Error as e:
-            logger.error(f"Error creating tables: {str(e)}")
+            logger.error(f"Error creating/updating tables: {str(e)}")
             conn.rollback()
         finally:
             cursor.close()
