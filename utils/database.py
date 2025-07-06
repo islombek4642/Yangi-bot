@@ -6,6 +6,7 @@ from typing import Optional, List, Dict
 import logging
 from datetime import datetime
 from urllib.parse import urlparse
+from telegram import User
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,9 @@ class Database:
                 CREATE TABLE IF NOT EXISTS users (
                     user_id BIGINT PRIMARY KEY,
                     first_name VARCHAR(255),
+                    last_name VARCHAR(255),
                     username VARCHAR(255),
+                    language_code VARCHAR(10),
                     phone_number VARCHAR(20),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -106,23 +109,46 @@ class Database:
             cursor.close()
             conn.close()
 
-    async def add_user(self, user_id: int, first_name: str, username: str, phone_number: str) -> bool:
-        """Add a new user to the database."""
+    async def add_user(self, user: User) -> None:
+        """Add or update a user in the database."""
+        query = """
+            INSERT INTO users (user_id, first_name, last_name, username, language_code)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                first_name = VALUES(first_name),
+                last_name = VALUES(last_name),
+                username = VALUES(username),
+                language_code = VALUES(language_code),
+                last_active = NOW()
+        """
+        params = (user.id, user.first_name, user.last_name, user.username, user.language_code)
+        
         conn = self.pool.get_connection()
         cursor = conn.cursor()
-
         try:
-            cursor.execute('''
-                INSERT IGNORE INTO users (user_id, first_name, username, phone_number)
-                VALUES (%s, %s, %s, %s)
-            ''', (user_id, first_name, username, phone_number))
-            
+            cursor.execute(query, params)
             conn.commit()
-            return True
         except Error as e:
-            logger.error(f"Error adding user: {str(e)}")
+            logger.error(f"Error in add_user: {e}")
             conn.rollback()
-            return False
+        finally:
+            cursor.close()
+            conn.close()
+
+    async def save_phone_number(self, user_id: int, phone_number: str) -> None:
+        """Save or update user's phone number."""
+        query = "UPDATE users SET phone_number = %s WHERE user_id = %s"
+        params = (phone_number, user_id)
+        
+        conn = self.pool.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query, params)
+            conn.commit()
+            logger.info(f"Saved phone number for user {user_id}")
+        except Error as e:
+            logger.error(f"Error in save_phone_number: {e}")
+            conn.rollback()
         finally:
             cursor.close()
             conn.close()

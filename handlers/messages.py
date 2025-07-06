@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 import os
-from telegram import Update, Message, InputFile
+from telegram import Update, Message, InputFile, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 from utils.database import db
 from utils.downloader import downloader
@@ -12,8 +12,8 @@ from utils.helpers import helpers
 logger = logging.getLogger(__name__)
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await db.add_user(update.effective_user)
     """Handle text messages."""
+    await db.add_user(update.effective_user)
     message = update.message
     text = message.text
     
@@ -24,8 +24,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await message.reply_text("📝 Matnli xabarlarni qabul qilishni hali qo'llab-quvvatlamayman.")
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await db.add_user(update.effective_user)
     """Handle audio, voice, and video messages."""
+    await db.add_user(update.effective_user)
     message = update.message
     user = message.from_user
     
@@ -191,3 +191,22 @@ async def process_video(message: Message, file_path: str) -> None:
     except Exception as e:
         logger.error(f"Error processing video: {str(e)}")
         await message.reply_text("❌ Xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring.")
+
+async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle incoming contact message."""
+    contact = update.message.contact
+    user = update.effective_user
+
+    # Ensure the user is added to the DB before saving the phone number
+    await db.add_user(user)
+
+    if contact.user_id != user.id:
+        await update.message.reply_text("Iltimos, o'zingizning kontaktingizni yuboring.")
+        return
+
+    await db.save_phone_number(user.id, contact.phone_number)
+    
+    await update.message.reply_text(
+        "Rahmat! Siz muvaffaqiyatli ro'yxatdan o'tdingiz.\n\nEndi musiqalarni aniqlash, videolardan audio ajratib olish va ovozli xabarlarni matnga o'girish uchun fayllarni yuborishingiz mumkin.",
+        reply_markup=ReplyKeyboardRemove()
+    )

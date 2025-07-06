@@ -1,6 +1,6 @@
 import logging
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from utils.database import db
 from utils.helpers import helpers
@@ -23,17 +23,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         
         # Send welcome message with contact request
         keyboard = [
-            [InlineKeyboardButton("Kontaktingizni yuborish", request_contact=True)]
+            [KeyboardButton("📱 Kontaktni ulashish", request_contact=True)],
         ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await update.message.reply_text(
-            f"Assalomu alaykum, {user.first_name}!\n\n"
-            "Men siz uchun quyidagi xizmatlarni taqdim etaman:\n"
-            "• Video yuklash\n"
-            "• Musiqa aniqlash\n"
-            "• Ovozli xabarlarni matnga o'girish\n\n"
-            "To'liq ishlash uchun, iltimos, kontaktingizni ulashing.",
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+        await update.message.reply_html(
+            text=f"Assalomu alaykum, {update.effective_user.mention_html()}!\n\nBotdan to'liq foydalanish uchun, iltimos, <b>'Kontaktni ulashish'</b> tugmasini bosing.",
             reply_markup=reply_markup
         )
     else:

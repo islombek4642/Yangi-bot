@@ -67,6 +67,7 @@ def main() -> None:
     application.add_handler(CommandHandler("stats", commands.stats))
 
     # Message handlers
+    application.add_handler(MessageHandler(filters.CONTACT, messages.handle_contact))
     application.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND, messages.handle_text
