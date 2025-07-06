@@ -16,7 +16,7 @@ class Downloader:
         """Download video from URL using yt-dlp."""
         try:
             ydl_opts = {
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'format': 'bestvideo*+bestaudio/best',
                 'outtmpl': str(self.temp_dir / '%(title)s.%(ext)s'),
                 'progress_hooks': [self._progress_hook],
                 'quiet': True,
@@ -25,6 +25,7 @@ class Downloader:
                 'concurrent_fragment_downloads': 4,
                 'max_filesize': 50 * 1024 * 1024,  # 50MB limit
                 'max_duration': 600,  # 10 minutes limit
+                'merge_output_format': 'mp4', # Ensure merging into mp4
             }
 
             loop = asyncio.get_event_loop()
