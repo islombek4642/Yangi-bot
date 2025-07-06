@@ -16,15 +16,15 @@ class Downloader:
         """Download video from URL using yt-dlp."""
         try:
             ydl_opts = {
-                'format': 'bestvideo*+bestaudio/best',
+                'format': 'best[ext=mp4]/best',  # Prioritize pre-merged MP4
                 'outtmpl': str(self.temp_dir / '%(title)s.%(ext)s'),
-                'verbose': True,  # Enable verbose logging for debugging
+                'quiet': True,
+                'no_warnings': True,
                 'noplaylist': True,
                 'concurrent_fragment_downloads': 4,
                 'max_filesize': 50 * 1024 * 1024,  # 50MB limit
                 'max_duration': 600,  # 10 minutes limit
-                'merge_output_format': 'mp4', # Ensure merging into mp4
-                'ffmpeg_location': '/usr/bin/ffmpeg' # Explicitly set path for ffmpeg
+                'merge_output_format': 'mp4',
             }
 
             loop = asyncio.get_event_loop()
