@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import os
 from telegram import Update, Message, InputFile
 from telegram.ext import ContextTypes
@@ -11,6 +12,7 @@ from utils.helpers import helpers
 logger = logging.getLogger(__name__)
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await db.add_user(update.effective_user)
     """Handle text messages."""
     message = update.message
     text = message.text
@@ -22,6 +24,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await message.reply_text("📝 Matnli xabarlarni qabul qilishni hali qo'llab-quvvatlamayman.")
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await db.add_user(update.effective_user)
     """Handle audio, voice, and video messages."""
     message = update.message
     user = message.from_user
