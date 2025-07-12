@@ -62,10 +62,13 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             return
         
         # Process based on file type
-        if message.audio or message.voice:
-            await process_audio(message, file_path)
-        elif message.video:
-            await process_video(message, file_path)
+        try:
+            if message.audio or message.voice:
+                await process_audio(message, file_path)
+            elif message.video:
+                await process_video(message, file_path)
+        finally:
+            await downloader.cleanup_file(file_path)
         
     except Exception as e:
         logger.error(f"Error processing media: {str(e)}")
@@ -124,12 +127,12 @@ async def process_url(message: Message, url: str) -> None:
 
     except Exception as e:
         logger.error(f"Error processing URL: {str(e)}")
-        if status_message:
+        if 'video_info' in locals() and video_info and 'filename' in video_info:
             await status_message.edit_text("❌ Xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring.")
     finally:
-        # Clean up downloaded file if it exists
-        if video_info and 'filename' in video_info and os.path.exists(video_info['filename']):
-            helpers.cleanup_file(Path(video_info['filename']))
+        # Cleanup downloaded file
+        if 'video_info' in locals() and video_info and 'filename' in video_info:
+            await downloader.cleanup_file(video_info['filename'])
 
 async def process_audio(message: Message, file_path: str) -> None:
     """Process audio/voice message."""

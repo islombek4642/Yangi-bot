@@ -76,8 +76,18 @@ class Downloader:
         elif d['status'] == 'finished':
             logger.info(f"Downloaded {d.get('filename', 'unknown')}")
 
-    async def cleanup(self) -> None:
-        """Cleanup temporary files."""
+    async def cleanup_file(self, file_path: str) -> None:
+        """Cleanup a specific temporary file."""
+        try:
+            p = Path(file_path)
+            if p.exists() and p.is_file():
+                p.unlink()
+                logger.info(f"Cleaned up temporary file: {file_path}")
+        except Exception as e:
+            logger.error(f"Error cleaning up file {file_path}: {str(e)}")
+
+    async def cleanup_temp_dir(self) -> None:
+        """Cleanup all temporary files in the directory."""
         try:
             for file in self.temp_dir.glob('*'):
                 try:
