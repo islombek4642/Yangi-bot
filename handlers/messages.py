@@ -127,8 +127,7 @@ async def process_url(message: Message, url: str) -> None:
 
     except Exception as e:
         logger.error(f"Error processing URL: {str(e)}")
-        if 'video_info' in locals() and video_info and 'filename' in video_info:
-            await status_message.edit_text("❌ Xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring.")
+        await message.reply_text("❌ Xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring.")
     finally:
         # Cleanup downloaded file
         if 'video_info' in locals() and video_info and 'filename' in video_info:
